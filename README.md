@@ -2,6 +2,8 @@
 
 **Your trading buddy. Lives in your terminal, watches your coins, and yells when something smells like a rug.**
 
+[radardotfun.github.io/truddy](https://radardotfun.github.io/truddy/)
+
 ```
 $ truddy moondog                                  (example output, fictional token)
 
