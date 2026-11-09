@@ -1,0 +1,45 @@
+{
+  "name": "truddy",
+  "version": "0.1.0",
+  "description": "Your trading buddy that lives in your terminal. Rug signals, X account watch, news and live alerts for any coin.",
+  "type": "module",
+  "bin": {
+    "truddy": "bin/truddy.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/truddy.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "crypto",
+    "cli",
+    "terminal",
+    "memecoin",
+    "rug",
+    "rugpull",
+    "solana",
+    "ethereum",
+    "dexscreener",
+    "trading",
+    "alerts"
+  ],
+  "author": "Radardotfun",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Radardotfun/truddy.git"
+  },
+  "homepage": "https://github.com/Radardotfun/truddy#readme",
+  "bugs": {
+    "url": "https://github.com/Radardotfun/truddy/issues"
+  }
+}
