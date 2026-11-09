@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>truddy · your trading buddy in the terminal</title>
+<meta name="description" content="truddy lives in your terminal. It scans any coin for rug signals, watches the dev's X account, reads the news and alerts you the moment liquidity moves. Free, open source, no API keys.">
+<meta name="theme-color" content="#07080A">
+<meta property="og:title" content="truddy · your trading buddy in the terminal">
+<meta property="og:description" content="Rug signals, X account watch, news and live alerts for any coin. Right inside your terminal.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23C6FF4D'/%3E%3Cstop offset='1' stop-color='%23A78BFA'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='%2307080A'/%3E%3Cpath d='M16 5l11 11-11 11L5 16z' fill='url(%23g)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07080a;
+  --bg2: #0a0c0f;
+  --card: #0d0f13;
+  --card2: #111419;
+  --line: #1a1e25;
+  --line2: #252a33;
+  --text: #eceef2;
+  --sub: #a1a7b3;
+  --mute: #646c7a;
+  --lime: #c6ff4d;
+  --violet: #a78bfa;
+  --red: #ff5c7a;
+  --amber: #ffc857;
+  --mint: #5cffb0;
+  --sky: #7dd3fc;
+  --sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --r: 18px;
+  --gutter: 16px;
+  --max: 1160px;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+::selection { background: rgba(198, 255, 77, .25); }
+.wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+@media (min-width: 720px) { :root { --gutter: 32px; } }
+
+/* ---------- nav ---------- */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  background: rgba(7, 8, 10, .72);
+  border-bottom: 1px solid transparent;
+  transition: border-color .3s;
+}
+.nav.scrolled { border-bottom-color: var(--line); }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+.logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; letter-spacing: -.02em; }
+.logo svg { width: 22px; height: 22px; }
+.nav-links { display: none; gap: 30px; font-size: 14px; color: var(--sub); }
+.nav-links a { transition: color .2s; }
+.nav-links a:hover { color: var(--text); }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line2); color: var(--sub); transition: color .2s, border-color .2s; }
+.icon-btn:hover { color: var(--text); border-color: #3a404b; }
+.icon-btn svg { width: 18px; height: 18px; }
+@media (min-width: 860px) { .nav-links { display: flex; } }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 20px; border-radius: 12px; border: 0; cursor: pointer;
+  font-weight: 600; font-size: 15px; letter-spacing: -.01em; white-space: nowrap;
+  transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s, background .2s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--lime); color: #0a0c06; box-shadow: 0 0 0 0 rgba(198,255,77,0); }
+.btn-primary:hover { box-shadow: 0 8px 30px -6px rgba(198,255,77,.45); transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--line2); }
+.btn-ghost:hover { border-color: #3a404b; background: rgba(255,255,255,.02); }
+.btn-sm { height: 38px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
+
+/* ---------- hero ---------- */
+.hero { position: relative; padding: 56px 0 40px; isolation: isolate; }
+@media (min-width: 720px) { .hero { padding: 96px 0 56px; } }
+.hero::before {
+  content: ''; position: absolute; inset: -64px 0 0; z-index: -2;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 30%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 30%, #000 20%, transparent 75%);
+  opacity: .55;
+}
+.glow { position: absolute; z-index: -1; border-radius: 50%; filter: blur(90px); opacity: .35; pointer-events: none; }
+.glow.a { width: 420px; height: 420px; background: var(--lime); top: 220px; left: 50%; transform: translateX(-90%); opacity: .14; }
+.glow.b { width: 460px; height: 460px; background: var(--violet); top: 260px; left: 50%; transform: translateX(-5%); opacity: .18; }
+.hero-copy { text-align: center; max-width: 880px; margin: 0 auto; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 6px 14px 6px 8px; border-radius: 999px;
+  border: 1px solid var(--line2); background: rgba(13,15,19,.7);
+  font-size: 13px; color: var(--sub);
+}
+.eyebrow .pill { font: 600 11px/1 var(--mono); color: #0a0c06; background: var(--lime); padding: 5px 8px; border-radius: 999px; letter-spacing: .02em; }
+h1 {
+  margin: 22px 0 0;
+  font-weight: 600;
+  font-size: clamp(42px, 8.4vw, 96px);
+  line-height: .98;
+  letter-spacing: -.048em;
+}
+h1 em, h2 em {
+  font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: -.02em;
+  background: linear-gradient(100deg, var(--lime), var(--violet) 80%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  padding-right: .06em;
+}
+.lede { margin: 22px auto 0; max-width: 620px; font-size: clamp(16px, 2.1vw, 19px); color: var(--sub); line-height: 1.6; }
+.cta-row { margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+@media (min-width: 640px) { .cta-row { flex-direction: row; justify-content: center; } }
+
+.install {
+  display: flex; align-items: center; gap: 4px; max-width: 100%;
+  height: 52px; padding: 0 6px 0 16px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line2);
+  font: 500 14px/1 var(--mono);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+.install .ps { color: var(--lime); margin-right: 8px; user-select: none; }
+.install code { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); min-width: 0; }
+.install code .dim { color: var(--mute); }
+.copy {
+  flex: none; margin-left: 10px; height: 40px; padding: 0 14px; border-radius: 10px; border: 0; cursor: pointer;
+  background: var(--lime); color: #0a0c06; font: 600 13px/1 var(--sans); display: inline-flex; align-items: center; gap: 6px;
+  transition: transform .15s, background .2s;
+}
+.copy:active { transform: scale(.95); }
+.copy.done { background: var(--mint); }
+.copy svg { width: 15px; height: 15px; }
+.install.big { height: 60px; font-size: 15px; }
+@media (max-width: 440px) {
+  .install, .install.big { font-size: 13px; padding-left: 14px; }
+  .copy { padding: 0 12px; }
+  .copy span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .copy.done span { position: static; width: auto; height: auto; clip: auto; }
+}
+.hero-note { margin-top: 14px; font-size: 13px; color: var(--mute); }
+.hero-note b { color: var(--sub); font-weight: 500; }
+
+/* ---------- terminal ---------- */
+.term-wrap { position: relative; margin: 56px auto 0; max-width: 760px; }
+@media (min-width: 720px) { .term-wrap { margin-top: 72px; } }
+.term {
+  position: relative; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(180deg, #0c0e12, #090a0d);
+  border: 1px solid var(--line2);
+  box-shadow: 0 40px 120px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.02) inset, 0 30px 80px -40px rgba(167,139,250,.35);
+}
+.term-bar { display: flex; align-items: center; gap: 14px; height: 42px; padding: 0 14px; border-bottom: 1px solid var(--line); background: #0b0d10; }
+.dots { display: flex; gap: 7px; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; background: #262a32; display: block; }
+.tab {
+  display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 8px;
+  background: #13161b; border: 1px solid var(--line); font: 500 12px/1 var(--mono); color: var(--sub);
+  position: relative; overflow: hidden; transition: border-color .3s, color .3s;
+}
+.tab::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+.tab.alarm { border-color: rgba(255,92,122,.4); color: var(--text); }
+.tab.alarm::after { transform: scaleX(1); }
+.tab .tdot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); }
+.tab.alarm .tdot { background: var(--red); box-shadow: 0 0 10px var(--red); }
+.term-hint { margin-left: auto; font: 500 11px/1 var(--mono); color: var(--mute); display: none; }
+@media (min-width: 640px) { .term-hint { display: block; } }
+.term-body {
+  margin: 0; padding: 18px 18px 22px; min-height: 468px;
+  font: 400 clamp(9.6px, 2.55vw, 15px)/1.6 var(--mono);
+  color: var(--text); white-space: pre; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+}
+.term-body::-webkit-scrollbar { display: none; }
+@media (min-width: 720px) { .term-body { padding: 22px 26px 28px; min-height: 520px; } }
+.term-body .ln-in { animation: lnIn .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lnIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.term-body .flash { animation: flash 1.4s ease-out both; }
+@keyframes flash { 0% { background: rgba(255,92,122,.28); } 100% { background: transparent; } }
+.cur { display: inline-block; width: .6em; height: 1.15em; vertical-align: -.2em; background: var(--lime); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.w { color: var(--text); } .s { color: var(--sub); } .u { color: var(--mute); } .ln { color: #343a46; }
+.l { color: var(--lime); } .v { color: var(--violet); } .r { color: var(--red); } .a { color: var(--amber); } .m { color: var(--mint); } .k { color: var(--sky); }
+.b { font-weight: 700; }
+.o { color: #ff8a4c; }
+.sb { display: inline-block; width: 1ch; text-align: center; }
+.sb i { font-style: normal; font-size: .78em; line-height: 1; vertical-align: -.22em; opacity: .9; }
+.br, .be { background: linear-gradient(transparent 22%, var(--bc) 22%, var(--bc) 78%, transparent 78%); }
+.br { --bc: var(--red); } .bm { --bc: var(--mint); background: linear-gradient(transparent 22%, var(--bc) 22%, var(--bc) 78%, transparent 78%); } .be { --bc: #2a2f39; }
+.grad { background: linear-gradient(90deg, var(--lime), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.term-caption { margin-top: 14px; text-align: center; font-size: 12px; color: var(--mute); }
+
+/* ---------- strip ---------- */
+.strip { padding: 56px 0 24px; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+@media (min-width: 860px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+.stat { background: var(--bg); padding: 26px 22px; }
+.stat b { display: block; font-size: clamp(32px, 4.6vw, 44px); font-weight: 600; letter-spacing: -.04em; line-height: 1; }
+.stat span { display: block; margin-top: 10px; font-size: 14px; color: var(--sub); }
+.sources { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 26px; color: var(--mute); font: 500 13px/1 var(--mono); }
+.sources .lbl { color: var(--sub); font-family: var(--sans); font-size: 13px; width: 100%; text-align: center; margin-bottom: 4px; }
+@media (min-width: 860px) { .sources .lbl { width: auto; margin: 0 6px 0 0; } }
+
+/* ---------- sections ---------- */
+section { position: relative; }
+.sec { padding: 88px 0; }
+@media (min-width: 720px) { .sec { padding: 120px 0; } }
+.kicker { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--lime); }
+h2 { margin: 16px 0 0; font-weight: 600; font-size: clamp(32px, 5.2vw, 60px); line-height: 1.02; letter-spacing: -.042em; max-width: 820px; }
+.sec-lede { margin: 18px 0 0; color: var(--sub); font-size: clamp(16px, 1.9vw, 18px); max-width: 600px; }
+
+/* ---------- bento ---------- */
+.bento { margin-top: 56px; display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 760px) { .bento { grid-template-columns: repeat(6, 1fr); } .c4 { grid-column: span 4; } .c3 { grid-column: span 3; } .c2 { grid-column: span 2; } }
+.card {
+  position: relative; overflow: hidden; border-radius: var(--r);
+  background: linear-gradient(180deg, var(--card2), var(--card));
+  border: 1px solid var(--line);
+  padding: 26px; display: flex; flex-direction: column; gap: 18px; min-height: 280px;
+  transition: border-color .3s, transform .4s cubic-bezier(.2,.8,.2,1);
+}
+.card:hover { border-color: var(--line2); }
+.card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(500px circle at var(--mx, 50%) var(--my, 0%), rgba(198,255,77,.06), transparent 40%); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.card:hover::before { opacity: 1; }
+.card h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
+.card p { margin: 6px 0 0; color: var(--sub); font-size: 15px; line-height: 1.55; max-width: 440px; }
+.card .vis {
+  margin-top: auto; border-radius: 12px; background: #08090c; border: 1px solid var(--line);
+  padding: 14px 16px; font: 400 12.5px/1.75 var(--mono); white-space: pre; overflow: hidden;
+}
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 500 11px/1 var(--mono); padding: 5px 8px; border-radius: 6px; background: rgba(255,92,122,.1); color: var(--red); border: 1px solid rgba(255,92,122,.25); }
+.card .vis.feed { white-space: normal; }
+@media (max-width: 440px) { .card .vis { font-size: 11.5px; padding: 12px 13px; white-space: pre-wrap; } .card .feed .row { white-space: pre-wrap; margin-bottom: 4px; } .card .feed .t { display: none; } }
+.feed .row { display: block; white-space: pre; opacity: 0; transform: translateY(6px); transition: opacity .5s, transform .5s cubic-bezier(.2,.8,.2,1); }
+.feed.on .row { opacity: 1; transform: none; }
+.feed.on .row:nth-child(2) { transition-delay: .5s; }
+.feed.on .row:nth-child(3) { transition-delay: 1s; }
+.feed.on .row:nth-child(4) { transition-delay: 1.5s; }
+.pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 0 rgba(255,92,122,.6); animation: pulse 1.8s infinite; vertical-align: 1px; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,92,122,.55); } 70% { box-shadow: 0 0 0 9px rgba(255,92,122,0); } 100% { box-shadow: 0 0 0 0 rgba(255,92,122,0); } }
+
+/* ---------- steps ---------- */
+.steps { margin-top: 56px; display: grid; gap: 14px; grid-template-columns: 1fr; counter-reset: s; }
+@media (min-width: 860px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+.step { border-radius: var(--r); border: 1px solid var(--line); background: var(--card); padding: 26px; }
+.step .n { font: 500 12px/1 var(--mono); color: var(--mute); }
+.step h3 { margin: 18px 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
+.step p { margin: 0; color: var(--sub); font-size: 15px; }
+.step pre { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px; background: #08090c; border: 1px solid var(--line); font: 400 13px/1.7 var(--mono); overflow-x: auto; white-space: pre; scrollbar-width: none; }
+.step pre::-webkit-scrollbar { display: none; }
+
+/* ---------- alerts list ---------- */
+.alerts { margin-top: 56px; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.alert {
+  display: grid; grid-template-columns: 1fr; gap: 6px 24px; padding: 22px 24px; background: var(--bg);
+  border-top: 1px solid var(--line); transition: background .25s;
+}
+.alert:first-child { border-top: 0; }
+.alert:hover { background: var(--bg2); }
+@media (min-width: 860px) { .alert { grid-template-columns: 92px 1.1fr 1fr; align-items: center; } }
+.lvl { font: 700 11px/1 var(--mono); letter-spacing: .08em; }
+.lvl.crit { color: var(--red); } .lvl.warn { color: var(--amber); } .lvl.info { color: var(--sky); }
+.alert .msg { font: 500 14.5px/1.5 var(--mono); color: var(--text); }
+.alert .why { color: var(--sub); font-size: 15px; }
+
+/* ---------- works-in ---------- */
+.works { padding: 0 0 24px; }
+.works-inner { border: 1px solid var(--line); border-radius: var(--r); padding: 28px; display: flex; flex-direction: column; gap: 18px; background: radial-gradient(120% 140% at 0% 0%, rgba(167,139,250,.07), transparent 50%), var(--card); }
+@media (min-width: 860px) { .works-inner { flex-direction: row; align-items: center; justify-content: space-between; } }
+.works-inner h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.025em; }
+.works-inner p { margin: 6px 0 0; color: var(--sub); font-size: 15px; }
+.terms { display: flex; flex-wrap: wrap; gap: 8px; }
+.terms span { font: 500 12.5px/1 var(--mono); color: var(--sub); padding: 9px 12px; border-radius: 999px; border: 1px solid var(--line2); background: #0a0b0e; }
+
+/* ---------- final cta ---------- */
+.final { text-align: center; padding: 120px 0 110px; overflow: hidden; }
+.final::before {
+  content: ''; position: absolute; left: 50%; top: 52%; width: 900px; height: 520px; transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, rgba(198,255,77,.12), transparent), radial-gradient(closest-side, rgba(167,139,250,.14), transparent);
+  filter: blur(30px); z-index: -1;
+}
+.final h2 { margin-left: auto; margin-right: auto; font-size: clamp(36px, 6.6vw, 78px); }
+.final .sec-lede { margin-left: auto; margin-right: auto; }
+.final .cta-row { margin-top: 36px; }
+.price-tag { margin-top: 26px; display: inline-flex; gap: 10px; align-items: center; font-size: 14px; color: var(--sub); }
+.price-tag b { color: var(--text); font-weight: 600; }
+.price-tag .sep { width: 4px; height: 4px; border-radius: 50%; background: var(--line2); }
+
+/* ---------- footer ---------- */
+footer { border-top: 1px solid var(--line); padding: 36px 0 calc(40px + env(safe-area-inset-bottom)); color: var(--mute); font-size: 14px; }
+footer .wrap { display: flex; flex-direction: column; gap: 18px; }
+@media (min-width: 760px) { footer .wrap { flex-direction: row; justify-content: space-between; align-items: center; } }
+.foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
+.foot-links a:hover { color: var(--text); }
+.disclaimer { font-size: 13px; color: var(--mute); max-width: 460px; }
+
+/* ---------- reveal ---------- */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+.d1 { transition-delay: .08s; } .d2 { transition-delay: .16s; } .d3 { transition-delay: .24s; }
+.rise { animation: rise .9s cubic-bezier(.2,.8,.2,1) both; }
+.rise.d1 { animation-delay: .06s; } .rise.d2 { animation-delay: .14s; } .rise.d3 { animation-delay: .22s; } .rise.d4 { animation-delay: .36s; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal, .feed .row { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .cur, .pulse, .term-body .ln-in, .term-body .flash, .rise { animation: none !important; }
+}
+</style>
+<noscript><style>.reveal{opacity:1;transform:none}</style></noscript>
+</head>
+<body>
+
+<nav class="nav" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="truddy home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C6FF4D"/><stop offset="1" stop-color="#A78BFA"/></linearGradient></defs><path d="M16 2l14 14-14 14L2 16z" fill="url(#lg)"/></svg>
+      truddy
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#alerts">Alerts</a>
+      <a href="https://github.com/Radardotfun/truddy#readme" target="_blank" rel="noopener">Docs</a>
+    </div>
+    <div class="nav-right">
+      <a class="icon-btn" href="https://github.com/Radardotfun/truddy" target="_blank" rel="noopener" aria-label="truddy on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+      </a>
+      <a class="btn btn-primary btn-sm" href="#install">Install</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <header class="hero">
+    <div class="glow a"></div><div class="glow b"></div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="eyebrow rise"><span class="pill">FREE</span> Open source · no API keys · zero deps</div>
+        <h1 class="rise d1">Your trading buddy <em>lives</em> in your terminal.</h1>
+        <p class="lede rise d2">truddy scans any coin for rug signals, keeps an eye on the dev's X account, reads the news, and pings you the moment liquidity moves. Right where you already work.</p>
+        <div class="cta-row rise d3" id="install">
+          <div class="install" role="group" aria-label="Install command">
+            <span class="ps">$</span><code id="cmd1">npm i -g github:Radardotfun/truddy</code>
+            <button class="copy" data-copy="npm i -g github:Radardotfun/truddy" aria-label="Copy install command">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy</span>
+            </button>
+          </div>
+          <a class="btn btn-ghost" href="https://github.com/Radardotfun/truddy" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+        <p class="hero-note rise d3">Then run <b>truddy &lt;ticker or contract&gt;</b>. Needs Node 18+. Works on Windows, macOS and Linux.</p>
+      </div>
+
+      <div class="term-wrap rise d4">
+        <div class="term" aria-label="truddy demo, fictional token">
+          <div class="term-bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="tab" id="tab"><span class="tdot"></span><span id="tabtitle">truddy</span></div>
+            <div class="term-hint">example output · fictional token</div>
+          </div>
+          <pre class="term-body" id="term" aria-live="off"></pre>
+        </div>
+        <p class="term-caption">Demo replay. <span class="u">$MOONDOG is made up. The checks are real.</span></p>
+      </div>
+    </div>
+  </header>
+
+  <section class="strip">
+    <div class="wrap">
+      <div class="stats reveal">
+        <div class="stat"><b>0</b><span>API keys or accounts</span></div>
+        <div class="stat"><b>0</b><span>npm dependencies</span></div>
+        <div class="stat"><b>15</b><span>chains contract-scanned</span></div>
+        <div class="stat"><b>15s</b><span>live refresh in watch mode</span></div>
+      </div>
+      <div class="sources reveal">
+        <span class="lbl">Built on free public data from</span>
+        <span>DexScreener</span><span>CoinGecko</span><span>RugCheck</span><span>GoPlus</span><span>FxTwitter</span><span>Google News</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="features">
+    <div class="wrap">
+      <div class="kicker reveal">What it does</div>
+      <h2 class="reveal d1">Everything you'd check by hand. <em>Before</em> you ape.</h2>
+      <p class="sec-lede reveal d2">One command pulls contract security, liquidity, order flow, the project's X account and the news into a single 0–100 risk score.</p>
+
+      <div class="bento">
+        <article class="card c4 reveal">
+          <div>
+            <h3>Rug scan in seconds</h3>
+            <p>Mint and freeze authority, honeypots, taxes, hidden owners, upgradeable proxies, LP lock, holder concentration and RugCheck risks across Solana and 14 EVM chains.</p>
+          </div>
+<div class="vis"><span class="r">✗</span> <span class="r">Freeze authority is LIVE · your tokens can be frozen</span>
+<span class="r">✗</span> <span class="w">Sell tax 24% · owner can change it</span>
+<span class="a">!</span> <span class="w">Top 10 wallets hold 71%</span>
+<span class="m">✓</span> <span class="s">Mint authority revoked</span>
+<span class="m">✓</span> <span class="s">LP locked/burned: 100%</span></div>
+        </article>
+
+        <article class="card c2 reveal d1">
+          <div>
+            <h3>Dev deleted their X?</h3>
+            <p>truddy keeps checking the project's account and alerts you when it vanishes, goes quiet, or posts "migrating to a new CA".</p>
+          </div>
+<div class="vis"><span class="u">X</span>  <span class="k">@moondog_sol</span>
+<span class="pulse"></span> <span class="r b">NOT FOUND</span>
+<span class="u">deleted, suspended or renamed</span></div>
+        </article>
+
+        <article class="card c2 reveal">
+          <div>
+            <h3>Copycat guard</h3>
+            <p>Tickers resolve to the CoinGecko-listed contract, so a fake token with the same name can't fool you.</p>
+          </div>
+<div class="vis"><span class="w b">$PEPE</span> <span class="u">→</span> <span class="s">0x6982…1933</span>
+<span class="m">✓</span> <span class="s">matches CoinGecko listing</span>
+<span class="a">!</span> <span class="w">27 other tokens use $PEPE</span></div>
+        </article>
+
+        <article class="card c4 reveal d1">
+          <div>
+            <h3>Alerts that actually page you</h3>
+            <p>Watch mode rings the bell, turns your terminal tab red and can send a desktop notification when something critical happens.</p>
+          </div>
+<div class="vis feed" id="feed"><span class="row"><span class="u t">14:02:11  </span><span class="r b">CRIT</span>  <span class="w b">$MOONDOG</span>  <span class="r">Liquidity pulled −72% ($84K → $23K)</span></span>
+<span class="row"><span class="u t">14:01:40  </span><span class="r b">CRIT</span>  <span class="w b">$MOONDOG</span>  <span class="r">X account @moondog_sol is GONE</span></span>
+<span class="row"><span class="u t">14:00:02  </span><span class="a b">WARN</span>  <span class="w b">$MOONDOG</span>  <span class="w">Sell wall: 53 sells vs 8 buys in 5m</span></span>
+<span class="row"><span class="u t">13:58:47  </span><span class="k">INFO</span>  <span class="w b">$SOL</span>      <span class="s">News: ETF inflows hit a monthly high</span></span></div>
+        </article>
+
+        <article class="card c3 reveal">
+          <div>
+            <h3>News, minus the fluff</h3>
+            <p>Coin-specific headlines with red-flag words highlighted. Paid "price prediction" spam gets pushed to the bottom.</p>
+          </div>
+<div class="vis"><span class="r">●</span> <span class="w">Protocol drained in $20M exploit</span>
+<span class="m">●</span> <span class="s">Major exchange lists the token</span>
+<span class="ln">●</span> <span class="u">Price prediction 2030: 100x?</span></div>
+        </article>
+
+        <article class="card c3 reveal d1">
+          <div>
+            <h3>Rides along in your prompt</h3>
+            <p>Run <span style="font-family:var(--mono);color:var(--text)">truddy init</span> once and your watchlist shows up in every shell you open. A red <span class="r b">!</span> means something critical happened.</p>
+          </div>
+<div class="vis"><span class="u">~/code</span> <span class="grad">◆</span> <span class="m b">BTC</span> <span class="m">▲0.6%</span> <span class="u">·</span> <span class="m b">SOL</span> <span class="r">▼1.2%</span> <span class="u">·</span> <span class="r b">MOONDOG</span> <span class="r">▼46%</span> <span class="r b">!</span>
+<span class="l">❯</span> <span class="cur"></span></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="how" style="padding-top:0">
+    <div class="wrap">
+      <div class="kicker reveal">How it works</div>
+      <h2 class="reveal d1">Three commands. <em>No</em> setup.</h2>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="n">01</div>
+          <h3>Install</h3>
+          <p>One global install, or try it with npx first.</p>
+<pre><span class="u">$</span> <span class="w">npm i -g github:Radardotfun/truddy</span></pre>
+        </div>
+        <div class="step reveal d1">
+          <div class="n">02</div>
+          <h3>Scan</h3>
+          <p>Paste a ticker, a name or a contract address from any chain.</p>
+<pre><span class="u">$</span> <span class="w">truddy bonk</span>
+<span class="u">$</span> <span class="w">truddy 0x6982…1933</span></pre>
+        </div>
+        <div class="step reveal d2">
+          <div class="n">03</div>
+          <h3>Watch</h3>
+          <p>Leave a dashboard open, or tail alerts in a tiny pane.</p>
+<pre><span class="u">$</span> <span class="w">truddy watch wif pepe</span>
+<span class="u">$</span> <span class="w">truddy watch bonk --tail</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="alerts" style="padding-top:0">
+    <div class="wrap">
+      <div class="kicker reveal">The alerts</div>
+      <h2 class="reveal d1">The stuff you usually find out about <em>too late.</em></h2>
+      <div class="alerts reveal">
+        <div class="alert"><span class="lvl crit">CRIT</span><span class="msg">Liquidity pulled −72%</span><span class="why">A pool lost 30%+ of its liquidity between two checks. Classic rug.</span></div>
+        <div class="alert"><span class="lvl crit">CRIT</span><span class="msg">X account @dev is GONE</span><span class="why">The project's account was deleted, suspended or renamed. Confirmed twice before it fires.</span></div>
+        <div class="alert"><span class="lvl crit">CRIT</span><span class="msg">Contract changed: mint authority is LIVE</span><span class="why">A new dangerous permission appeared on the contract while you were watching.</span></div>
+        <div class="alert"><span class="lvl crit">CRIT</span><span class="msg">@dev says the account was hacked</span><span class="why">Scary posts get flagged: hacked, exploit, "new CA", migration, relaunch.</span></div>
+        <div class="alert"><span class="lvl warn">WARN</span><span class="msg">Sell wall: 53 sells vs 8 buys in 5m</span><span class="why">Order flow tips hard to one side.</span></div>
+        <div class="alert"><span class="lvl warn">WARN</span><span class="msg">Website moondog.fun went down</span><span class="why">Teams that leave usually let the site die first.</span></div>
+        <div class="alert"><span class="lvl info">INFO</span><span class="msg">News: Exchange lists $SOL perps</span><span class="why">New headlines about your coins, as they land.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="works">
+    <div class="wrap">
+      <div class="works-inner reveal">
+        <div>
+          <h3>Works in whatever terminal you use</h3>
+          <p>Pure Node, true color with graceful fallback, and a tail mode for split panes.</p>
+        </div>
+        <div class="terms"><span>Windows Terminal</span><span>PowerShell</span><span>iTerm2</span><span>VS Code</span><span>tmux</span><span>Warp</span><span>Ghostty</span><span>Alacritty</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap">
+      <h2 class="reveal">Stop finding out on X that <em>the dev left.</em></h2>
+      <p class="sec-lede reveal d1">Install truddy in ten seconds. Your next scan runs before the chart finishes loading.</p>
+      <div class="cta-row reveal d2">
+        <div class="install big" role="group" aria-label="Try command">
+          <span class="ps">$</span><code>npx github:Radardotfun/truddy <span class="dim">bonk</span></code>
+          <button class="copy" data-copy="npx github:Radardotfun/truddy bonk" aria-label="Copy try command">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>Copy</span>
+          </button>
+        </div>
+      </div>
+      <div class="price-tag reveal d3"><b>$0</b> forever <span class="sep"></span> MIT licensed <span class="sep"></span> no account</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#top" style="font-size:16px">
+      <svg viewBox="0 0 32 32" aria-hidden="true" style="width:18px;height:18px"><path d="M16 2l14 14-14 14L2 16z" fill="url(#lg)"/></svg> truddy
+    </a>
+    <div class="disclaimer">Signals, not financial advice. A clean scan can't rule out a rug, and a scary one doesn't prove one.</div>
+    <div class="foot-links">
+      <a href="https://github.com/Radardotfun/truddy" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Radardotfun/truddy#readme" target="_blank" rel="noopener">Docs</a>
+      <a href="https://github.com/Radardotfun/truddy/issues" target="_blank" rel="noopener">Issues</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // nav border on scroll
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // reveal on scroll
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  const feed = document.getElementById('feed');
+  new IntersectionObserver((es, o) => es.forEach((e) => { if (e.isIntersecting) { feed.classList.add('on'); o.disconnect(); } }), { threshold: 0.4 }).observe(feed);
+
+  // card spotlight
+  document.querySelectorAll('.card').forEach((card) => card.addEventListener('pointermove', (e) => {
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    card.style.setProperty('--my', `${e.clientY - r.top}px`);
+  }));
+
+  // copy buttons
+  document.querySelectorAll('.copy').forEach((btn) => btn.addEventListener('click', async () => {
+    const text = btn.dataset.copy;
+    try { await navigator.clipboard.writeText(text); } catch {
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove();
+    }
+    const label = btn.querySelector('span');
+    btn.classList.add('done'); label.textContent = 'Copied';
+    setTimeout(() => { btn.classList.remove('done'); label.textContent = 'Copy'; }, 1600);
+  }));
+
+  // ---------------- terminal replay ----------------
+  const term = document.getElementById('term');
+  const tab = document.getElementById('tab');
+  const tabTitle = document.getElementById('tabtitle');
+  const W = 54;
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const len = (segs) => segs.reduce((n, [, t]) => n + [...t].length, 0);
+  // subscript digits (zero-count in tiny prices) render too small in most mono fonts: draw them ourselves
+  const subs = (s) => s.replace(/[₀-₉]/g, (d) => `<span class="sb"><i>${d.charCodeAt(0) - 0x2080}</i></span>`);
+  const html = (segs) => segs.map(([c, t]) => (c ? `<span class="${c}">${subs(esc(t))}</span>` : subs(esc(t)))).join('');
+  const sp = (n) => [['', ' '.repeat(Math.max(1, n))]];
+  const spread = (l, r, w = W) => [...l, ...sp(w - len(l) - len(r)), ...r];
+  const padTo = (segs, w) => [...segs, ['', ' '.repeat(Math.max(0, w - len(segs)))]];
+  const box = (rows) => {
+    const inner = W - 2;
+    return [
+      [['ln', '╭' + '─'.repeat(inner) + '╮']],
+      ...rows.map((r) => [['ln', '│'], ['', ' '], ...padTo(r, inner - 2), ['', ' '], ['ln', '│']]),
+      [['ln', '╰' + '─'.repeat(inner) + '╯']],
+    ];
+  };
+  const rule = (label, w = W) => [['ln', '── '], ['s b', label], ['ln', ' ' + '─'.repeat(Math.max(0, w - label.length - 4))]];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const prompt = () => '<span class="l">❯</span> ';
+
+  const scanLines = [
+    ...box([
+      spread([['w b', '$MOONDOG'], ['s', '  Moon Dog · Solana']], [['r b', 'RISK 78 '], ['br', '      '], ['be', '  ']], W - 4),
+      spread([['w b', '$0.0₄4120'], ['r', '  ▼ 38.2% '], ['u', '1h'], ['r', '  ▼ 61% '], ['u', '24h']], [['r', '● '], ['r b', 'DANGER']], W - 4),
+    ]),
+    [],
+    [['r b', '  DANGER'], ['u', '  —  '], ['s', 'consistent with a rug']],
+    [['r', '    ✗ '], ['w', 'Freeze authority is LIVE']],
+    [['r', '    ✗ '], ['w', 'X account @moondog_sol not found']],
+    [['a', '    ! '], ['w', '412 sells vs 61 buys in the last hour']],
+    [['a', '    ! '], ['w', 'Only 3h 12m old · top 10 hold 71%']],
+    [],
+    rule('MARKET'),
+    [['u', '  Liquidity  '], ['w', '$84.2K'], ['u', '    Mcap  '], ['w', '$412K']],
+    [['u', '  Flow 1h    '], ['bm', ' '], ['br', '       '], ['m', ' 61'], ['u', ' buys '], ['r', '412'], ['u', ' sells']],
+    [],
+    rule('SOCIALS'),
+    [['u', '  X    '], ['k', '@moondog_sol  '], ['r b', '● NOT FOUND']],
+    [['u', '  Web  '], ['k', 'moondog.fun   '], ['r', '● down']],
+    [],
+    [['grad', '  ◆ '], ['u', 'watch it live  '], ['l', 'truddy watch moondog']],
+  ];
+
+  function dash(s) {
+    const cols = [2, 9, 12, 9, 13, 8];
+    const row = (cells) => cells.flatMap((c, i) => padTo(c, cols[i]));
+    const risk = s.risk >= 70 ? 'r' : s.risk >= 45 ? 'o' : 'm';
+    const lines = [
+      spread([['grad', '◆ truddy'], ['u', '  watching 3']], [['u', `next ${s.next}s · ${s.clock}`]]),
+      [],
+      row([[], [['u', 'COIN']], [['u', 'PRICE']], [['u', '1H']], [['u', 'RISK']], [['u', 'X']]]),
+      row([[['l', '›']], [['w b', 'BTC']], [['w', '$74,605']], [['m', '▲ 0.6%']], [['m', '●  2 low']], [['m', '✓ '], ['s', '8.9M']]]),
+      row([[], [['s', 'SOL']], [['w', '$162.40']], [['r', '▼ 1.2%']], [['m', '●  3 low']], [['m', '✓ '], ['s', '3.4M']]]),
+      row([[], [['s', 'MOONDOG']], [['w', s.price]], [['r', s.h1]], [[risk, `● ${s.risk} ${s.risk >= 70 ? 'DANGER' : 'high'}`]], s.xGone ? [['r b', '✗ GONE']] : [['m', '✓ '], ['s', '2.1K']]]),
+      [],
+      rule('ALERTS'),
+      ...(s.alerts.length ? s.alerts : [[['u', '  all quiet. truddy is watching.']]]),
+    ];
+    return lines;
+  }
+
+  const ALERTS = [
+    { at: 1800, line: [['u', '  14:00:02  '], ['a b', 'WARN  '], ['w b', '$MOONDOG '], ['w', 'Sell wall: 53 vs 8 in 5m']], st: { h1: '▼ 21.4%', price: '$0.0₄3240', risk: 64, clock: '14:00:02' } },
+    { at: 3600, line: [['u', '  14:01:40  '], ['r b', 'CRIT  '], ['w b', '$MOONDOG '], ['r', 'X account is GONE']], st: { xGone: true, risk: 81, clock: '14:01:40' }, crit: true },
+    { at: 5400, line: [['u', '  14:02:11  '], ['r b', 'CRIT  '], ['w b', '$MOONDOG '], ['r', 'Liquidity pulled −72%']], st: { h1: '▼ 46.0%', price: '$0.0₄2210', risk: 91, clock: '14:02:11' }, crit: true },
+  ];
+
+  const render = (lines, animateFrom = Infinity, flashIdx = -1) => {
+    term.innerHTML = lines.map((l, i) => `<span class="${i >= animateFrom ? 'ln-in' : ''}${i === flashIdx ? ' flash' : ''}" style="display:block">${html(l) || ' '}</span>`).join('');
+  };
+
+  async function typeCmd(cmd) {
+    let typed = '';
+    for (const ch of cmd) {
+      typed += ch;
+      term.innerHTML = prompt() + `<span class="w">${esc(typed)}</span><span class="cur"></span>`;
+      await sleep(38 + Math.random() * 46);
+    }
+    await sleep(260);
+  }
+
+  async function spinner(text, ms) {
+    const frames = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏';
+    const end = performance.now() + ms;
+    let i = 0;
+    while (performance.now() < end) {
+      term.innerHTML = `${prompt()}<span class="w">${esc(text.cmd)}</span>\n\n  <span class="l">${frames[i++ % frames.length]}</span> <span class="s">${esc(text.msg)}</span>`;
+      await sleep(80);
+    }
+  }
+
+  let visible = true;
+  new IntersectionObserver((es) => es.forEach((e) => (visible = e.isIntersecting)), { threshold: 0 }).observe(term);
+  const waitVisible = async () => { while (!visible || document.hidden) await sleep(300); };
+
+  async function sceneScan() {
+    tab.classList.remove('alarm');
+    tabTitle.textContent = 'truddy';
+    await typeCmd('truddy moondog');
+    await spinner({ cmd: 'truddy moondog', msg: 'scanning $MOONDOG: contract · X · news' }, 1300);
+    const head = [[['l', '❯ '], ['w', 'truddy moondog']], []];
+    for (let i = 1; i <= scanLines.length; i++) {
+      render([...head, ...scanLines.slice(0, i)], head.length + i - 1);
+      await sleep(i < 4 ? 70 : 55);
+    }
+    tabTitle.textContent = 'truddy · MOONDOG ▼38.2%';
+    await sleep(5200);
+  }
+
+  async function sceneWatch() {
+    await typeCmd('truddy watch btc sol moondog');
+    await spinner({ cmd: 'truddy watch btc sol moondog', msg: 'scanning $BTC $SOL $MOONDOG' }, 900);
+    const s = { next: 15, clock: '13:59:48', price: '$0.0₄4120', h1: '▼ 12.3%', risk: 52, xGone: false, alerts: [] };
+    tabTitle.textContent = 'truddy · watching 3';
+    render(dash(s), 0);
+    const t0 = performance.now();
+    let k = 0;
+    while (performance.now() - t0 < 9200) {
+      const el = performance.now() - t0;
+      s.next = 15 - (Math.floor(el / 1000) % 15);
+      while (k < ALERTS.length && el >= ALERTS[k].at) {
+        const a = ALERTS[k++];
+        Object.assign(s, a.st);
+        s.alerts.unshift(a.line);
+        if (a.crit) { tab.classList.add('alarm'); tabTitle.textContent = 'truddy · CRITICAL'; }
+        const lines = dash(s);
+        render(lines, Infinity, lines.length - s.alerts.length);
+        await sleep(120);
+        continue;
+      }
+      const lines = dash(s);
+      if (!term.querySelector('.flash')) render(lines);
+      await sleep(250);
+    }
+    await sleep(800);
+  }
+
+  function staticFrame() {
+    render([[['l', '❯ '], ['w', 'truddy moondog']], [], ...scanLines]);
+  }
+
+  if (reduced) { staticFrame(); return; }
+  (async () => {
+    await sleep(700);
+    for (;;) {
+      await waitVisible();
+      await sceneScan();
+      await waitVisible();
+      await sceneWatch();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
